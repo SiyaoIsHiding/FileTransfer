@@ -1,28 +1,26 @@
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 public class FileHTTPServer {
     private final int port;
-    private final String encoding;
-
-
-    public FileHTTPServer(int port, String encoding) {
+    public FileHTTPServer(int port) {
         this.port = port;
-        this.encoding = encoding;
     }
 
     public void start(){
         ExecutorService pool = Executors.newFixedThreadPool(100);
         try (ServerSocket server = new ServerSocket(this.port)){
             System.out.println("Server listening on port " + server.getLocalPort());
-            System.out.println("Data to be sent");
             while(true){
                 try{
                     Socket connection = server.accept();
@@ -48,13 +46,24 @@ public class FileHTTPServer {
         @Override
         public Void call() throws Exception {
             try{
-                Path path = Paths.get("public/data1.txt");
-                byte[] data = Files.readAllBytes(path);
                 OutputStream out = new BufferedOutputStream(connection.getOutputStream());
                 InputStream in = new BufferedInputStream(connection.getInputStream());
-                out.write(data);
+                InputStreamReader reader = new InputStreamReader(in, "ASCII");
+
+                Path path = Paths.get("public/");
+//                byte[] data = Files.readAllBytes(path);
+                Path[] availableFiles = Files.list(path).toArray(Path[]::new);
+                StringBuilder toSend = new StringBuilder();
+                for (int i = 0; i < availableFiles.length; i++){
+                    toSend.append(availableFiles[i].getFileName() + "\r\n");
+                }
+                System.out.println(toSend);
+
+                out.write(toSend.toString().getBytes(Charset.forName("US-ASCII")));
                 out.flush();
             } catch (IOException e) {
+                e.printStackTrace();
+            } catch (RuntimeException e){
                 e.printStackTrace();
             } finally {
                 connection.close();
@@ -67,7 +76,7 @@ public class FileHTTPServer {
         int port = 80;
         String encoding = "US-ASCII";
         try {
-            FileHTTPServer server  = new FileHTTPServer(port, encoding);
+            FileHTTPServer server  = new FileHTTPServer(port);
             server.start();
 
         } catch (ArrayIndexOutOfBoundsException e){
