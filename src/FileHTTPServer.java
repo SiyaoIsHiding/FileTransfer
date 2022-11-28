@@ -3,6 +3,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -13,8 +14,10 @@ import java.util.stream.Stream;
 
 public class FileHTTPServer {
     private final int port;
-    public FileHTTPServer(int port) {
+    private final String folder;
+    public FileHTTPServer(int port, String folder) {
         this.port = port;
+        this.folder = folder;
     }
 
     public void start(){
@@ -24,7 +27,7 @@ public class FileHTTPServer {
             while(true){
                 try{
                     Socket connection = server.accept();
-                    pool.submit(new SendSingle(connection));
+                    pool.submit(new SendSingle(connection, this.folder)); // Multi-threads!
                 }catch(IOException e){
                     e.printStackTrace();
                 }catch(RuntimeException e){
@@ -38,29 +41,53 @@ public class FileHTTPServer {
 
     private class SendSingle implements Callable<Void> {
         private final Socket connection;
+        private final String folder;
 
-        private SendSingle(Socket connection) {
+        private SendSingle(Socket connection, String folder) {
             this.connection = connection;
+            this.folder = folder;
         }
 
         @Override
         public Void call() throws Exception {
-            try{
+            try {
                 OutputStream out = new BufferedOutputStream(connection.getOutputStream());
                 InputStream in = new BufferedInputStream(connection.getInputStream());
-                InputStreamReader reader = new InputStreamReader(in, "ASCII");
+                BufferedReader reader = new BufferedReader(new InputStreamReader(in, "ASCII"));
 
-                Path path = Paths.get("public/");
-//                byte[] data = Files.readAllBytes(path);
-                Path[] availableFiles = Files.list(path).toArray(Path[]::new);
-                StringBuilder toSend = new StringBuilder();
-                for (int i = 0; i < availableFiles.length; i++){
-                    toSend.append(availableFiles[i].getFileName() + "\r\n");
+                String command = reader.readLine();
+                System.out.println("received command: " + command);
+                // TODO: Split the commands!
+                String[] commands = command.split(" ");
+                if (command.equals("index")) {
+                    Path path = Paths.get(this.folder);
+                    Path[] availableFiles = Files.list(path).toArray(Path[]::new);
+                    StringBuilder toSend = new StringBuilder();
+                    for (int i = 0; i < availableFiles.length; i++) {
+                        toSend.append(availableFiles[i].getFileName() + "\r\n");
+                    }
+                    System.out.println(toSend);
+
+                    out.write(toSend.toString().getBytes(Charset.forName("US-ASCII")));
+                    out.flush();
+                } else {
+                    Path path = Paths.get(this.folder, commands[1]);
+
+                    String err = "error\r\n";
+                    String ok = "ok\r\n";
+                    try {
+                        byte[] data = Files.readAllBytes(path); //IOException
+                        out.write(ok.getBytes(Charset.forName("ASCII")));
+                        out.write(data);
+                        out.flush();
+                    } catch (Exception e){
+                        out.write(err.getBytes(Charset.forName("ASCII")));
+                        out.flush();
+                    }
                 }
-                System.out.println(toSend);
 
-                out.write(toSend.toString().getBytes(Charset.forName("US-ASCII")));
-                out.flush();
+            } catch (InvalidPathException e){
+
             } catch (IOException e) {
                 e.printStackTrace();
             } catch (RuntimeException e){
@@ -74,13 +101,14 @@ public class FileHTTPServer {
 
     public static void main(String[] args){
         int port = 80;
+        String folder = args.length > 0? args[0] : "public";
         String encoding = "US-ASCII";
         try {
-            FileHTTPServer server  = new FileHTTPServer(port);
+            FileHTTPServer server  = new FileHTTPServer(port, folder);
             server.start();
 
         } catch (ArrayIndexOutOfBoundsException e){
-            System.out.println("Usage: java SingleFileHTTPServer.java filename port encoding");
+            System.out.println("Missing folder name");
         }
     }
 }
