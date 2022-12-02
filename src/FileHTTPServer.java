@@ -104,7 +104,6 @@ public class FileHTTPServer {
     public static void main(String[] args){
         int port = 80;
         String folder = args.length > 0? args[0] : "public";
-        String encoding = "US-ASCII";
         try {
             FileHTTPServer server  = new FileHTTPServer(port, folder);
             server.start();

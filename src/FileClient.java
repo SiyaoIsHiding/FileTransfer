@@ -16,14 +16,15 @@ public class FileClient {
     }
 
     public static void fileCommand(Socket socket, String fileName, BufferedInputStream socketIn) throws IOException {
-        Path path = Paths.get("received",fileName);
-
-        BufferedOutputStream bufferedOut = new BufferedOutputStream(new FileOutputStream(path.toString()));
-        OutputStreamWriter fileOut = new OutputStreamWriter(bufferedOut, "ASCII"); // file out: fileOut
 
         BufferedReader socketReader = new BufferedReader(new InputStreamReader(socketIn));
         String status = socketReader.readLine();
         if (status.equals("ok")){
+            Path path = Paths.get("received",fileName);
+
+            BufferedOutputStream bufferedOut = new BufferedOutputStream(new FileOutputStream(path.toString()));
+            OutputStreamWriter fileOut = new OutputStreamWriter(bufferedOut, "ASCII"); // file out: fileOut
+
             for (int c = socketReader.read(); c != -1; c=socketReader.read()){
                 fileOut.write(c);
                 System.out.print((char)c);
