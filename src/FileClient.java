@@ -54,13 +54,14 @@ public class FileClient {
                     break;
                 }else{
                     String[] commands = command.split(" ");
-                    socketOut.write((command+"\r\n").getBytes(Charset.forName("ASCII")));
-                    System.out.println("send command: " +command);
-                    socketOut.flush();
                     if ((commands.length<=1) || !commands[0].equals("get")) {
                         System.out.println("Wrong syntax");
+                    }else{
+                        socketOut.write((command+"\r\n").getBytes(Charset.forName("ASCII")));
+                        System.out.println("send command: " +command);
+                        socketOut.flush();
+                        fileCommand(socket, commands[1], socketIn);
                     }
-                    fileCommand(socket, commands[1], socketIn);
                 }
 
                 socket.close();

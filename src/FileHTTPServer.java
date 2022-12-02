@@ -56,8 +56,10 @@ public class FileHTTPServer {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(in, "ASCII"));
 
                 String command = reader.readLine();
+                if (command == null){
+                    return null; //TODO: ask TA!
+                }
                 System.out.println("received command: " + command);
-                // TODO: Split the commands!
                 String[] commands = command.split(" ");
                 if (command.equals("index")) {
                     Path path = Paths.get(this.folder);
